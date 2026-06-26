@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chris Crash</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #15151f;
+    --panel: #1a1a26;
+    --panel-2: #22222e;
+    --line: #2a2a38;
+    --text: #f5f5f7;
+    --muted: #8a8a99;
+    --green: #22c55e;
+    --green-2: #16a34a;
+    --red: #ef4444;
+    --red-2: #dc2626;
+    --amber: #f59e0b;
+    --cyan: #22d3ee;
+    --pink: #ec4899;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    display: flex; justify-content: center; align-items: center;
+    background:
+      radial-gradient(circle at 50% 0%, #1a1028 0%, transparent 50%),
+      radial-gradient(circle at 20% 80%, #0f1a28 0%, transparent 50%),
+      var(--bg);
+  }
+  .app {
+    width: 100%; max-width: 480px; height: 100vh; max-height: 900px;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+  }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border-bottom: 1px solid var(--line);
+  }
+  .logo {
+    font-weight: 800; letter-spacing: 0.12em; font-size: 18px;
+    background: linear-gradient(90deg, #ec4899, #f59e0b);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .balance {
+    font-weight: 700; font-size: 16px;
+    background: var(--panel-2);
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .history {
+    display: flex; gap: 8px; padding: 10px 16px;
+    overflow-x: auto; scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .history::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+    background: rgba(255,255,255,0.04);
+  }
+  .chip.low { color: #6ee7b7; }
+  .chip.mid { color: #fcd34d; }
+  .chip.high { color: #fb923c; }
+  .chip.mega { color: #f472b6; }
+
+  .stage {
+    flex: 1; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 24px;
+  }
+  canvas#bg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    z-index: 0;
+  }
+  .stage-content {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .main-mult {
+    font-size: 88px; font-weight: 800; line-height: 1;
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 40px rgba(255,255,255,0.15);
+    transition: color 0.2s;
+  }
+  .main-mult.crashed { color: var(--red); text-shadow: 0 0 40px rgba(239,68,68,0.5); }
+  .main-mult.cashed { color: var(--green); text-shadow: 0 0 40px rgba(34,197,94,0.5); }
+  .main-mult sup { font-size: 0.45em; vertical-align: super; opacity: 0.9; }
+  .booster-row {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(34, 211, 238, 0.08);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    padding: 8px 16px; border-radius: 999px;
+    margin-top: 8px;
+    transition: background 0.3s, border-color 0.3s, transform 0.2s;
+    position: relative;
+  }
+  .booster-row.locked {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+  .booster-row.lock-flash {
+    animation: lockFlash 0.6s ease-out;
+  }
+  @keyframes lockFlash {
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+    30%  { transform: scale(1.08); box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  }
+  .booster-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--cyan);
+  }
+  .booster-row.locked .booster-label { color: var(--amber); }
+  .booster-val {
+    font-size: 22px; font-weight: 700;
+    color: var(--cyan);
+  }
+  .booster-row.locked .booster-val { color: var(--amber); }
+  .booster-suffix {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--cyan); opacity: 0.7;
+  }
+  .booster-row.locked .booster-suffix { color: var(--amber); }
+  .booster-hint {
+    margin-top: 8px;
+    font-size: 12px; color: var(--muted);
+    text-align: center;
+    font-weight: 500;
+    min-height: 16px;
+  }
+  .booster-hint b { color: var(--cyan); font-weight: 700; }
+  .booster-row.locked + .booster-hint b { color: var(--amber); }
+
+  /* lock icon: SVG with animated shackle */
+  .lock-icon {
+    width: 18px; height: 22px;
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+  }
+  .lock-icon .shackle {
+    position: absolute; top: 0; left: 50%;
+    width: 12px; height: 12px;
+    border: 2.5px solid currentColor;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    transform: translate(-50%, -4px) rotate(-25deg);
+    transform-origin: 100% 100%;
+    transition: transform 0.35s cubic-bezier(.6,-0.3,.6,1.3);
+  }
+  .lock-icon .body {
+    position: absolute; bottom: 0; left: 50%;
+    width: 16px; height: 12px;
+    background: currentColor;
+    border-radius: 3px;
+    transform: translateX(-50%);
+  }
+  .lock-icon .body::after {
+    content: ''; position: absolute;
+    top: 50%; left: 50%;
+    width: 3px; height: 5px;
+    background: var(--panel);
+    border-radius: 2px;
+    transform: translate(-50%, -50%);
+  }
+  .lock-icon.locked .shackle {
+    transform: translate(-50%, -4px) rotate(0deg);
+  }
+
+  /* big lock pop overlay when locking happens */
+  .lock-pop {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(0.3);
+    width: 80px; height: 80px;
+    color: var(--amber);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .lock-pop.go {
+    animation: lockPop 0.85s ease-out forwards;
+  }
+  .lock-pop .lock-icon {
+    width: 100%; height: 100%;
+    color: var(--amber);
+    filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.8));
+  }
+  .lock-pop .lock-icon .shackle {
+    width: 56%; height: 56%;
+    border-width: 8px;
+    border-radius: 28px 28px 0 0;
+    top: 0;
+    transform: translate(-50%, -8px) rotate(0deg);
+  }
+  .lock-pop .lock-icon .body {
+    width: 72%; height: 50%;
+    border-radius: 10px;
+  }
+  .lock-pop .lock-icon .body::after {
+    width: 10px; height: 18px;
+    border-radius: 4px;
+  }
+  @keyframes lockPop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-20deg); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(0deg); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9) rotate(0deg); }
+  }
+  .status {
+    margin-top: 14px; font-size: 13px; color: var(--muted);
+    min-height: 18px;
+    font-weight: 500; letter-spacing: 0.05em;
+  }
+  .status.live { color: var(--green); }
+  .status.crashed { color: var(--red); }
+  .status.cashed { color: var(--green); }
+
+  .controls {
+    padding: 16px;
+    background: var(--bg-2);
+    border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bet-panel {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+  }
+  .bet-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel-2);
+    border-radius: 999px;
+    padding: 6px;
+  }
+  .bet-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,0.06);
+    color: var(--text); font-size: 18px; font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bet-btn:hover { background: rgba(255,255,255,0.12); }
+  .bet-amount {
+    flex: 1; text-align: center; font-weight: 700; font-size: 16px;
+    background: transparent; border: none; color: var(--text);
+    width: 100%; min-width: 0;
+    font-family: inherit;
+  }
+  .bet-amount:focus { outline: none; }
+  .quick-bets {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .quick-bets button {
+    flex: 1; padding: 6px; border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line);
+    color: var(--muted); font-weight: 600; font-size: 12px;
+    cursor: pointer;
+  }
+  .quick-bets button:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+  .action-row { display: flex; gap: 10px; margin-top: 10px; }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 10px;
+    border: none; font-weight: 800; font-size: 15px;
+    cursor: pointer; letter-spacing: 0.04em;
+    transition: transform 0.06s, opacity 0.15s, background 0.15s;
+    text-transform: uppercase;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-bet { background: linear-gradient(180deg, var(--green), var(--green-2)); color: white; }
+  .btn-cashout { background: linear-gradient(180deg, var(--amber), #d97706); color: #1a0f00; }
+  .btn-stop {
+    background: linear-gradient(180deg, var(--cyan), #0891b2); color: #001218;
+  }
+  .btn-stop.locked {
+    background: linear-gradient(180deg, #475569, #334155); color: #94a3b8;
+  }
+
+  .countdown-bar {
+    height: 4px; background: var(--panel); border-radius: 2px; overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .countdown-bar div {
+    height: 100%; background: linear-gradient(90deg, var(--green), var(--cyan));
+    width: 0%; transition: width 0.1s linear;
+  }
+  .badge-bet {
+    display: inline-block;
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--green);
+    padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">CHRIS CRASH</div>
+    <div class="balance" id="balance">€100.00</div>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <div class="stage">
+    <canvas id="bg"></canvas>
+    <div class="stage-content">
+      <div class="main-mult" id="mainMult">1.00<sup>x</sup></div>
+      <div class="booster-row" id="boosterRow">
+        <span class="lock-icon" id="boosterLockIcon"><span class="shackle"></span><span class="body"></span></span>
+        <span class="booster-label">BOOSTER</span>
+        <span class="booster-val" id="boosterVal">×1.00</span>
+        <span class="booster-suffix">SPEED</span>
+      </div>
+      <div class="booster-hint" id="boosterHint">the cashout multiplier grows at base speed</div>
+      <div class="status" id="status">Place your bet</div>
+      <div class="lock-pop" id="lockPop"><span class="lock-icon locked"><span class="shackle"></span><span class="body"></span></span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="countdown-bar"><div id="countdownFill"></div></div>
+    <div class="bet-panel">
+      <div class="bet-row">
+        <button class="bet-btn" id="betMinus">−</button>
+        <input class="bet-amount" id="betAmount" value="€1.00" />
+        <button class="bet-btn" id="betPlus">+</button>
+      </div>
+      <div class="quick-bets">
+        <button data-amt="1">€1</button>
+        <button data-amt="2">€2</button>
+        <button data-amt="5">€5</button>
+        <button data-amt="10">€10</button>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-bet" id="betBtn">Bet now</button>
+        <button class="btn btn-stop" id="stopBtn" disabled>Lock in booster</button>
+        <button class="btn btn-cashout" id="cashoutBtn" disabled>Cash out</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- state ----------
+  const state = {
+    balance: 100.0,
+    bet: 1.0,
+    hasBet: false,
+    cashedOut: false,
+    phase: 'waiting', // waiting | betting | live | crashed
+    mainMult: 1.0,
+    boosterMult: 1.0,
+    boosterLocked: false,
+    crashPoint: 0,
+    history: [], // past round crash points
+    tickStart: 0,
+    bettingEndsAt: 0,
+    bettingDuration: 6000,
+  };
+
+  // ---------- elements ----------
+  const $ = id => document.getElementById(id);
+  const elMain = $('mainMult');
+  const elBooster = $('boosterVal');
+  const elBoosterRow = $('boosterRow');
+  const elBoosterLockIcon = $('boosterLockIcon');
+  const elLockPop = $('lockPop');
+  const elBoosterHint = $('boosterHint');
+  const elStatus = $('status');
+  const elBalance = $('balance');
+  const elHistory = $('history');
+  const elBetAmount = $('betAmount');
+  const elBetBtn = $('betBtn');
+  const elStopBtn = $('stopBtn');
+  const elCashoutBtn = $('cashoutBtn');
+  const elCountdownFill = $('countdownFill');
+  const canvas = $('bg');
+  const ctx = canvas.getContext('2d');
+
+  // ---------- helpers ----------
+  const fmtEur = n => '€' + n.toFixed(2);
+  const setBalance = v => { state.balance = Math.max(0, v); elBalance.textContent = fmtEur(state.balance); };
+  setBalance(100);
+
+  function setBet(v) {
+    v = Math.max(0.1, Math.min(state.balance > 0 ? state.balance : 1000, v));
+    state.bet = Math.round(v * 100) / 100;
+    elBetAmount.value = fmtEur(state.bet);
+  }
+  setBet(1);
+
+  function chipClass(mult) {
+    if (mult >= 10) return 'mega';
+    if (mult >= 3) return 'high';
+    if (mult >= 2) return 'mid';
+    return 'low';
+  }
+
+  function renderHistory() {
+    elHistory.innerHTML = '';
+    state.history.slice(-12).reverse().forEach(m => {
+      const c = document.createElement('div');
+      c.className = 'chip ' + chipClass(m);
+      c.textContent = m.toFixed(2) + 'x';
+      elHistory.appendChild(c);
+    });
+  }
+
+  // crash distribution: classic-style with ~1% house edge
+  function rollCrash() {
+    const r = Math.random();
+    if (r < 0.01) return 1.0; // instant crash
+    // 1 / (1 - r) gives heavy-tailed crash points; cap to keep visuals sane
+    const raw = 0.99 / (1 - r);
+    return Math.min(50, Math.max(1.0, raw));
+  }
+
+  // ---------- phases ----------
+  function startBettingPhase() {
+    state.phase = 'betting';
+    state.hasBet = false;
+    state.cashedOut = false;
+    state.mainMult = 1.0;
+    state.boosterMult = 1.0;
+    state.boosterLocked = false;
+    state.crashPoint = rollCrash();
+    state.bettingEndsAt = performance.now() + state.bettingDuration;
+    elBoosterRow.classList.remove('locked', 'lock-flash');
+    elBoosterLockIcon.classList.remove('locked');
+    elStopBtn.classList.remove('locked');
+    elLockPop.classList.remove('go');
+    updateUI();
+    elStatus.textContent = 'Place your bet';
+    elStatus.className = 'status';
+  }
+
+  function startLivePhase() {
+    state.phase = 'live';
+    state.tickStart = performance.now();
+    elCountdownFill.style.width = '0%';
+    elStatus.textContent = state.hasBet ? 'In play — cash out anytime' : 'Round in progress';
+    elStatus.className = 'status live';
+    updateUI();
+  }
+
+  function endRoundCrash() {
+    state.phase = 'crashed';
+    state.mainMult = state.crashPoint;
+    state.history.push(state.crashPoint);
+    renderHistory();
+    elMain.classList.add('crashed');
+    elStatus.textContent = '💥 Crashed at ' + state.crashPoint.toFixed(2) + 'x';
+    elStatus.className = 'status crashed';
+    if (state.hasBet && !state.cashedOut) {
+      // lost
+    }
+    updateUI();
+    setTimeout(() => {
+      elMain.classList.remove('crashed');
+      elMain.classList.remove('cashed');
+      startBettingPhase();
+    }, 2800);
+  }
+
+  function placeBet() {
+    if (state.phase !== 'betting') return;
+    if (state.bet > state.balance) {
+      elStatus.textContent = 'Insufficient balance';
+      return;
+    }
+    setBalance(state.balance - state.bet);
+    state.hasBet = true;
+    elStatus.textContent = 'Bet placed: ' + fmtEur(state.bet);
+    updateUI();
+  }
+
+  function cashOut() {
+    if (state.phase !== 'live' || !state.hasBet || state.cashedOut) return;
+    const payout = state.bet * state.mainMult;
+    setBalance(state.balance + payout);
+    state.cashedOut = true;
+    elMain.classList.add('cashed');
+    elStatus.textContent = '✓ Cashed out ' + state.mainMult.toFixed(2) + 'x — won ' + fmtEur(payout);
+    elStatus.className = 'status cashed';
+    updateUI();
+  }
+
+  function stopBooster() {
+    if (state.phase !== 'live' || state.boosterLocked) return;
+    state.boosterLocked = true;
+    elBoosterRow.classList.add('locked');
+    elBoosterLockIcon.classList.add('locked');
+    elStopBtn.classList.add('locked');
+    elStopBtn.textContent = 'Locked at ×' + state.boosterMult.toFixed(2);
+
+    // pop animation
+    elLockPop.classList.remove('go');
+    void elLockPop.offsetWidth; // restart animation
+    elLockPop.classList.add('go');
+
+    // pulse the booster pill
+    elBoosterRow.classList.remove('lock-flash');
+    void elBoosterRow.offsetWidth;
+    elBoosterRow.classList.add('lock-flash');
+
+    updateUI();
+  }
+
+  function updateUI() {
+    elMain.innerHTML = state.mainMult.toFixed(2) + '<sup>x</sup>';
+    elBooster.textContent = '×' + state.boosterMult.toFixed(2);
+
+    if (state.phase === 'live' || state.phase === 'crashed') {
+      const b = state.boosterMult.toFixed(2);
+      if (state.boosterMult <= 1.001) {
+        elBoosterHint.innerHTML = 'cashout multiplier grows at base speed';
+      } else {
+        elBoosterHint.innerHTML = 'cashout multiplier climbing <b>' + b + '× faster</b> than base';
+      }
+    } else {
+      elBoosterHint.innerHTML = 'booster scales how fast the cashout multiplier grows';
+    }
+
+    const betting = state.phase === 'betting';
+    const live = state.phase === 'live';
+
+    elBetBtn.disabled = !betting || state.hasBet || state.bet > state.balance;
+    elBetBtn.textContent = state.hasBet ? 'Bet placed' : 'Bet now';
+    if (state.hasBet && betting) {
+      elBetBtn.textContent = 'Bet placed (' + fmtEur(state.bet) + ')';
+    }
+
+    elStopBtn.disabled = !live || state.boosterLocked;
+    if (!state.boosterLocked) {
+      elStopBtn.textContent = 'Lock in booster';
+      elStopBtn.classList.remove('locked');
+    }
+
+    elCashoutBtn.disabled = !(live && state.hasBet && !state.cashedOut);
+    if (live && state.hasBet && !state.cashedOut) {
+      elCashoutBtn.textContent = 'Cash out ' + fmtEur(state.bet * state.mainMult);
+    } else {
+      elCashoutBtn.textContent = 'Cash out';
+    }
+  }
+
+  // ---------- game loop ----------
+  // booster base growth (per second) while unlocked
+  const BOOSTER_GROWTH = 0.35;
+  // main multiplier base growth (per second) before booster applied
+  const MAIN_BASE_GROWTH = 0.08;
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+
+    if (state.phase === 'betting') {
+      const remaining = state.bettingEndsAt - now;
+      const pct = 100 * (1 - remaining / state.bettingDuration);
+      elCountdownFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      if (remaining <= 0) startLivePhase();
+    } else if (state.phase === 'live') {
+      if (!state.boosterLocked) {
+        state.boosterMult += BOOSTER_GROWTH * dt;
+      }
+      // main growth scales with booster AND with current main value (so it accelerates)
+      const growth = MAIN_BASE_GROWTH * state.boosterMult * state.mainMult;
+      state.mainMult += growth * dt;
+
+      if (state.mainMult >= state.crashPoint) {
+        endRoundCrash();
+      } else {
+        updateUI();
+        drawCurve();
+      }
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- background curve ----------
+  function resize() {
+    const r = canvas.parentElement.getBoundingClientRect();
+    canvas.width = r.width * devicePixelRatio;
+    canvas.height = r.height * devicePixelRatio;
+    canvas.style.width = r.width + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawCurve() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    // gradient sky
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(236, 72, 153, 0.04)');
+    g.addColorStop(1, 'rgba(34, 211, 238, 0.02)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    if (state.phase !== 'live' && state.phase !== 'crashed') return;
+
+    const t = Math.min(1, (state.mainMult - 1) / 8);
+    const startX = 20, startY = h - 20;
+    const endX = startX + (w - 40) * Math.min(1, 0.2 + t * 0.8);
+    const endY = startY - (h - 40) * Math.min(1, t);
+
+    // filled area under curve
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    for (let i = 0; i <= 60; i++) {
+      const p = i / 60;
+      const x = startX + (endX - startX) * p;
+      const y = startY - (startY - endY) * (p * p);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(endX, startY);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, endY, 0, startY);
+    if (state.phase === 'crashed') {
+      grad.addColorStop(0, 'rgba(239, 68, 68, 0.35)');
+      grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    } else {
+      grad.addColorStop(0, 'rgba(34, 211, 238, 0.25)');
+      grad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+    }
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // curve line
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    for (let i = 0; i <= 60; i++) {
+      const p = i / 60;
+      const x = startX + (endX - startX) * p;
+      const y = startY - (startY - endY) * (p * p);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = state.phase === 'crashed' ? '#ef4444' : '#22d3ee';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // glowing dot at tip
+    ctx.beginPath();
+    ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = state.phase === 'crashed' ? '#ef4444' : '#fff';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = state.phase === 'crashed' ? '#ef4444' : '#22d3ee';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // ---------- input ----------
+  $('betMinus').addEventListener('click', () => setBet(state.bet - 0.5));
+  $('betPlus').addEventListener('click', () => setBet(state.bet + 0.5));
+  elBetAmount.addEventListener('change', () => {
+    const n = parseFloat(elBetAmount.value.replace(/[^0-9.]/g, ''));
+    if (!isNaN(n)) setBet(n);
+    else elBetAmount.value = fmtEur(state.bet);
+  });
+  document.querySelectorAll('.quick-bets button').forEach(b => {
+    b.addEventListener('click', () => setBet(parseFloat(b.dataset.amt)));
+  });
+  elBetBtn.addEventListener('click', placeBet);
+  elStopBtn.addEventListener('click', stopBooster);
+  elCashoutBtn.addEventListener('click', cashOut);
+
+  // keyboard: space = cashout/stop, b = bet
+  window.addEventListener('keydown', e => {
+    if (e.key === ' ') {
+      e.preventDefault();
+      if (state.phase === 'live' && state.hasBet && !state.cashedOut) cashOut();
+      else if (state.phase === 'live' && !state.boosterLocked) stopBooster();
+    } else if (e.key === 'b' || e.key === 'B') {
+      placeBet();
+    }
+  });
+
+  // ---------- boot ----------
+  startBettingPhase();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
